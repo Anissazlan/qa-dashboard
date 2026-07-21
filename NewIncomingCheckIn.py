@@ -212,17 +212,128 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
     st.session_state.suppliers = s_list
     st.session_state.commodities = c_list
 
-# Helper function to reset form state
-def reset_form():
-    st.session_state["in_mpn"] = ""
-    st.session_state["in_part_no"] = ""
-    st.session_state["in_lot_no"] = ""
-    st.session_state["in_qty"] = 1
-    st.session_state["in_supplier"] = ""
-    st.session_state["in_commodity"] = ""
-    st.session_state["in_status"] = ""
-    st.session_state["in_remark"] = ""
-    st.session_state["uploader_key"] = st.session_state.get("uploader_key", 0) + 1
+# Callback function executed safely BEFORE widget instantiation
+def handle_checkin():
+    supplier_input = st.session_state.get("in_supplier", "")
+    mpn = st.session_state.get("in_mpn", "")
+    part_no = st.session_state.get("in_part_no", "")
+    status = st.session_state.get("in_status", "")
+    store_date = st.session_state.get("in_store_date", datetime.now())
+    iqa_date = st.session_state.get("in_iqa_date", datetime.now())
+    lot_no = st.session_state.get("in_lot_no", "")
+    quantity = st.session_state.get("in_qty", 1)
+    commodity_input = st.session_state.get("in_commodity", "")
+    remark = st.session_state.get("in_remark", "")
+    uploaded_image = st.session_state.get("in_picture", None)
+
+    if not supplier_input or not mpn or not part_no or not status:
+        st.session_state["validation_error"] = "⚠️ Please fill in required fields (Supplier, MPN, Part No, Status)."
+        return
+
+    st.session_state["validation_error"] = None
+
+    try:
+        sheet_name = store_date.strftime("%b %Y")
+        temp_img_path = None
+
+        if uploaded_image:
+            temp_img_path = f"temp_{uploaded_image.name}"
+            with open(temp_img_path, "wb") as f:
+                f.write(uploaded_image.getbuffer())
+
+        initialize_excel_database()
+        wb = load_workbook(EXCEL_FILE)
+
+        if sheet_name not in wb.sheetnames:
+            ws = wb.create_sheet(title=sheet_name, index=0)
+            for col, text in enumerate(HEADERS, start=1):
+                ws.cell(row=1, column=col).value = text
+            ws.auto_filter.ref = f"A1:{get_column_letter(len(HEADERS))}1"
+        else:
+            ws = wb[sheet_name]
+
+        row = ws.max_row + 1
+
+        data = [
+            store_date.strftime("%d/%m/%Y"),
+            iqa_date.strftime("%d/%m/%Y"),
+            supplier_input,
+            mpn.upper(),
+            part_no.upper(),
+            lot_no.upper(),
+            quantity,
+            commodity_input,
+            status,
+            "",
+            remark
+        ]
+
+        for col, value in enumerate(data, start=1):
+            ws.cell(row=row, column=col, value=value)
+
+        colors = {
+            "ACCEPT": "009900", "REJECT": "FF0000", "WAIVER": "00B0F0",
+            "QA PASS": "66FF33", "ON HOLD": "FFFF00"
+        }
+        if status in colors:
+            ws.cell(row=row, column=9).fill = PatternFill("solid", fgColor=colors[status])
+
+        if temp_img_path and os.path.exists(temp_img_path):
+            try:
+                img_to_insert = OpenpyxlImage(temp_img_path)
+                col_idx = 9
+                row_idx = row - 1
+
+                cell_w_px = 154
+                cell_h_px = 86
+
+                max_w, max_h = 135, 72
+                w, h = img_to_insert.width, img_to_insert.height
+                ratio = min(max_w / float(w), max_h / float(h))
+                new_w = int(w * ratio)
+                new_h = int(h * ratio)
+
+                EMU_PER_PX = 9525
+                offset_x_emu = int((cell_w_px - new_w) / 2) * EMU_PER_PX
+                offset_y_emu = int((cell_h_px - new_h) / 2) * EMU_PER_PX
+
+                marker_from = AnchorMarker(
+                    col=col_idx, colOff=offset_x_emu,
+                    row=row_idx, rowOff=offset_y_emu
+                )
+                marker_to = AnchorMarker(
+                    col=col_idx, colOff=offset_x_emu + (new_w * EMU_PER_PX),
+                    row=row_idx, rowOff=offset_y_emu + (new_h * EMU_PER_PX)
+                )
+
+                img_to_insert.anchor = TwoCellAnchor(_from=marker_from, to=marker_to, editAs="oneCell")
+                ws.add_image(img_to_insert)
+            except Exception as img_err:
+                pass
+
+        apply_excel_formatting(ws)
+        wb.save(EXCEL_FILE)
+        wb.close()
+
+        if temp_img_path and os.path.exists(temp_img_path):
+            os.remove(temp_img_path)
+
+        # Clear fields on success
+        st.session_state["in_mpn"] = ""
+        st.session_state["in_part_no"] = ""
+        st.session_state["in_lot_no"] = ""
+        st.session_state["in_qty"] = 1
+        st.session_state["in_supplier"] = ""
+        st.session_state["in_commodity"] = ""
+        st.session_state["in_status"] = ""
+        st.session_state["in_remark"] = ""
+
+        # Trigger popup modal
+        st.session_state.show_success_modal = True
+        st.session_state.last_saved_sheet = sheet_name
+
+    except Exception as e:
+        st.session_state["validation_error"] = f"Error saving to Excel: {e}"
 
 # Check if pop-up needs to trigger
 if "show_success_modal" in st.session_state and st.session_state.show_success_modal:
@@ -243,15 +354,18 @@ if os.path.exists("Kaltech Logo.png"):
 st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
 
+# Display error message if any
+if st.session_state.get("validation_error"):
+    st.warning(st.session_state["validation_error"])
+
 # 2. Form Layout (3 Compact Columns)
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    store_date = st.date_input("Store Receive Date", value=datetime.now(), key="in_store_date")
-    iqa_date = st.date_input("IQA Receive Date", value=datetime.now(), key="in_iqa_date")
+    st.date_input("Store Receive Date", value=datetime.now(), key="in_store_date")
+    st.date_input("IQA Receive Date", value=datetime.now(), key="in_iqa_date")
     
-    # Inline Supplier Selection & Quick Add
-    supplier_input = st.selectbox(
+    st.selectbox(
         "Supplier", 
         [""] + st.session_state.suppliers,
         key="in_supplier"
@@ -270,15 +384,14 @@ with col1:
                 st.rerun()
 
 with col2:
-    mpn = st.text_input("MPN No.", key="in_mpn")
-    part_no = st.text_input("Part No.", key="in_part_no")
-    lot_no = st.text_input("DC/Lot No.", key="in_lot_no")
+    st.text_input("MPN No.", key="in_mpn")
+    st.text_input("Part No.", key="in_part_no")
+    st.text_input("DC/Lot No.", key="in_lot_no")
 
 with col3:
-    quantity = st.number_input("Quantity", min_value=1, step=1, value=1, key="in_qty")
+    st.number_input("Quantity", min_value=1, step=1, value=1, key="in_qty")
     
-    # Inline Commodity Selection & Quick Add
-    commodity_input = st.selectbox(
+    st.selectbox(
         "Commodity", 
         [""] + st.session_state.commodities,
         key="in_commodity"
@@ -296,123 +409,18 @@ with col3:
                 st.success(f"Added {cleaned_com}!")
                 st.rerun()
 
-    status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"], key="in_status")
+    st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"], key="in_status")
 
 # Bottom Row Inputs
 bottom_col1, bottom_col2 = st.columns([2, 1])
 with bottom_col1:
-    remark = st.text_area("Remark", height=68, key="in_remark")
+    st.text_area("Remark", height=68, key="in_remark")
 
 with bottom_col2:
-    uploader_key = st.session_state.get("uploader_key", 0)
-    uploaded_image = st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"], key=f"uploader_{uploader_key}")
+    st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"], key="in_picture")
 
-# Submit Check In Button (Green)
-submit_clicked = st.button("📥 CHECK IN", type="primary", use_container_width=True)
-
-# ==========================================================
-# SAVE DATA PIPELINE
-# ==========================================================
-if submit_clicked:
-    if not supplier_input or not mpn or not part_no or not status:
-        st.warning("⚠️ Please fill in required fields (Supplier, MPN, Part No, Status).")
-    else:
-        try:
-            sheet_name = store_date.strftime("%b %Y")
-            temp_img_path = None
-
-            if uploaded_image:
-                temp_img_path = f"temp_{uploaded_image.name}"
-                with open(temp_img_path, "wb") as f:
-                    f.write(uploaded_image.getbuffer())
-
-            initialize_excel_database()
-            wb = load_workbook(EXCEL_FILE)
-
-            if sheet_name not in wb.sheetnames:
-                ws = wb.create_sheet(title=sheet_name, index=0)
-                for col, text in enumerate(HEADERS, start=1):
-                    ws.cell(row=1, column=col).value = text
-                ws.auto_filter.ref = f"A1:{get_column_letter(len(HEADERS))}1"
-            else:
-                ws = wb[sheet_name]
-
-            row = ws.max_row + 1
-
-            data = [
-                store_date.strftime("%d/%m/%Y"),
-                iqa_date.strftime("%d/%m/%Y"),
-                supplier_input,
-                mpn.upper(),
-                part_no.upper(),
-                lot_no.upper(),
-                quantity,
-                commodity_input,
-                status,
-                "",
-                remark
-            ]
-
-            for col, value in enumerate(data, start=1):
-                ws.cell(row=row, column=col, value=value)
-
-            colors = {
-                "ACCEPT": "009900", "REJECT": "FF0000", "WAIVER": "00B0F0",
-                "QA PASS": "66FF33", "ON HOLD": "FFFF00"
-            }
-            if status in colors:
-                ws.cell(row=row, column=9).fill = PatternFill("solid", fgColor=colors[status])
-
-            if temp_img_path and os.path.exists(temp_img_path):
-                try:
-                    img_to_insert = OpenpyxlImage(temp_img_path)
-                    col_idx = 9
-                    row_idx = row - 1
-
-                    cell_w_px = 154
-                    cell_h_px = 86
-
-                    max_w, max_h = 135, 72
-                    w, h = img_to_insert.width, img_to_insert.height
-                    ratio = min(max_w / float(w), max_h / float(h))
-                    new_w = int(w * ratio)
-                    new_h = int(h * ratio)
-
-                    EMU_PER_PX = 9525
-                    offset_x_emu = int((cell_w_px - new_w) / 2) * EMU_PER_PX
-                    offset_y_emu = int((cell_h_px - new_h) / 2) * EMU_PER_PX
-
-                    marker_from = AnchorMarker(
-                        col=col_idx, colOff=offset_x_emu,
-                        row=row_idx, rowOff=offset_y_emu
-                    )
-                    marker_to = AnchorMarker(
-                        col=col_idx, colOff=offset_x_emu + (new_w * EMU_PER_PX),
-                        row=row_idx, rowOff=offset_y_emu + (new_h * EMU_PER_PX)
-                    )
-
-                    img_to_insert.anchor = TwoCellAnchor(_from=marker_from, to=marker_to, editAs="oneCell")
-                    ws.add_image(img_to_insert)
-                except Exception as img_err:
-                    st.error(f"Image error: {img_err}")
-
-            apply_excel_formatting(ws)
-            wb.save(EXCEL_FILE)
-            wb.close()
-
-            if temp_img_path and os.path.exists(temp_img_path):
-                os.remove(temp_img_path)
-
-            # Reset form inputs back to blank
-            reset_form()
-
-            # Trigger Center Modal Pop-up
-            st.session_state.show_success_modal = True
-            st.session_state.last_saved_sheet = sheet_name
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"Error saving to Excel: {e}")
+# Submit Check In Button with Callback Handler
+st.button("📥 CHECK IN", type="primary", use_container_width=True, on_click=handle_checkin)
 
 # ==========================================================
 # VIEW AND EDIT EXCEL LOG DIRECTLY (ALL MONTHS SELECTOR)
