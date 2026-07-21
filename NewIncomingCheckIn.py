@@ -26,11 +26,17 @@ st.markdown("""
         background-color: #FFFFFF !important;
     }
     
-    /* Reduce page padding for single screen fit */
+    /* Page Padding */
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
         max-width: 95% !important;
+    }
+    
+    /* Center images in columns */
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
     }
     
     /* Bold & Clear Field Labels */
@@ -63,7 +69,7 @@ st.markdown("""
     .main-title {
         color: #1F4E79;
         font-weight: 900;
-        font-size: 26px;
+        font-size: 28px;
         margin-bottom: 0px;
         text-align: center;
     }
@@ -71,8 +77,8 @@ st.markdown("""
         color: #666666;
         font-style: italic;
         font-weight: 600;
-        font-size: 13px;
-        margin-bottom: 10px;
+        font-size: 14px;
+        margin-bottom: 15px;
         text-align: center;
     }
     </style>
@@ -193,16 +199,16 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
 # UI LAYOUT
 # ==========================================================
 
-# 1. Centered Logo & Header Title
-logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
-with logo_col2:
-    if os.path.exists("Kaltech Logo.png"):
-        st.image("Kaltech Logo.png", use_container_width=True)
+# 1. Standard Centered Logo
+if os.path.exists("Kaltech Logo.png"):
+    logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
+    with logo_col2:
+        st.image("Kaltech Logo.png", width=180)
 
 st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
 
-# 2. Compact Form Layout (3 Columns)
+# 2. Form Layout (3 Columns)
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -370,7 +376,6 @@ if os.path.exists(EXCEL_FILE):
     try:
         df_excel = pd.read_excel(EXCEL_FILE, sheet_name=current_sheet)
         
-        # Interactive table for editing cell values directly on web page
         edited_df = st.data_editor(
             df_excel, 
             use_container_width=True, 
@@ -384,7 +389,6 @@ if os.path.exists(EXCEL_FILE):
                 with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
                     edited_df.to_excel(writer, sheet_name=current_sheet, index=False)
                 
-                # Re-apply styling
                 wb = load_workbook(EXCEL_FILE)
                 ws = wb[current_sheet]
                 apply_excel_formatting(ws)
