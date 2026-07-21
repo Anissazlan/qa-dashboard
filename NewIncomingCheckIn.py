@@ -15,25 +15,25 @@ from openpyxl.drawing.spreadsheet_drawing import TwoCellAnchor, AnchorMarker
 st.set_page_config(
     page_title="New Incoming Check In",
     page_icon="📦",
-    layout="wide"  # Use wide mode for optimal screen fit
+    layout="wide"
 )
 
-# Custom CSS: Ultra-Compact Layout to avoid scrolling
+# Custom Styling (White Background, Bold Labels, Green Buttons)
 st.markdown("""
     <style>
-    /* Pure White Background */
+    /* White Background */
     .stApp {
         background-color: #FFFFFF !important;
     }
     
-    /* Reduce page padding */
+    /* Reduce page padding for single screen fit */
     .block-container {
         padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
+        padding-bottom: 1rem !important;
         max-width: 95% !important;
     }
     
-    /* Bold & Crisp Field Labels */
+    /* Bold & Clear Field Labels */
     div[data-widget="text_input"] label, 
     div[data-widget="number_input"] label, 
     div[data-widget="selectbox"] label, 
@@ -46,12 +46,20 @@ st.markdown("""
         margin-bottom: 2px !important;
     }
 
-    /* Reduce vertical padding between widgets */
-    div[data-testid="stVerticalBlock"] > div {
-        gap: 0.4rem !important;
+    /* Custom Green Color for Action Buttons */
+    div.stButton > button[kind="primary"] {
+        background-color: #28A745 !important;
+        border-color: #28A745 !important;
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
     }
-    
-    /* Main Heading Styling */
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #218838 !important;
+        border-color: #1e7e34 !important;
+    }
+
+    /* Titles */
     .main-title {
         color: #1F4E79;
         font-weight: 900;
@@ -182,43 +190,39 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
     st.session_state.commodities = c_list
 
 # ==========================================================
-# UI LAYOUT (3 COMPACT COLUMNS)
+# UI LAYOUT
 # ==========================================================
 
-# Display Logo + Title Compact Header
-header_col1, header_col2, header_col3 = st.columns([1, 3, 1])
-with header_col2:
+# 1. Centered Logo & Header Title
+logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
+with logo_col2:
     if os.path.exists("Kaltech Logo.png"):
-        st.image("Kaltech Logo.png", width=110)
-    st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
+        st.image("Kaltech Logo.png", use_container_width=True)
 
-# 3-Column Parallel Form Layout
+st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
+
+# 2. Compact Form Layout (3 Columns)
 col1, col2, col3 = st.columns(3)
 
 with col1:
     store_date = st.date_input("Store Receive Date", value=datetime.now())
     iqa_date = st.date_input("IQA Receive Date", value=datetime.now())
     
-    sup_col1, sup_col2 = st.columns([3, 1])
-    with sup_col1:
-        selected_supplier = st.selectbox("Supplier", [""] + st.session_state.suppliers)
-    with sup_col2:
-        st.write(" ")
-        st.write(" ")
-        if st.popover("⚙️"):
-            new_sup = st.text_input("Add Supplier").strip().upper()
-            if st.button("Add Supplier") and new_sup:
-                if new_sup not in st.session_state.suppliers:
-                    st.session_state.suppliers.append(new_sup)
-                    save_list_to_excel(1, st.session_state.suppliers)
-                    st.success(f"Added {new_sup}")
-                    st.rerun()
-            if selected_supplier and st.button("Delete Selected Supplier"):
-                st.session_state.suppliers.remove(selected_supplier)
+    selected_supplier = st.selectbox("Supplier", [""] + st.session_state.suppliers)
+    if st.popover("⚙️ Manage Supplier List", use_container_width=True):
+        new_sup = st.text_input("Add Supplier").strip().upper()
+        if st.button("Add Supplier") and new_sup:
+            if new_sup not in st.session_state.suppliers:
+                st.session_state.suppliers.append(new_sup)
                 save_list_to_excel(1, st.session_state.suppliers)
-                st.success(f"Deleted {selected_supplier}")
+                st.success(f"Added {new_sup}")
                 st.rerun()
+        if selected_supplier and st.button("Delete Selected Supplier"):
+            st.session_state.suppliers.remove(selected_supplier)
+            save_list_to_excel(1, st.session_state.suppliers)
+            st.success(f"Deleted {selected_supplier}")
+            st.rerun()
 
 with col2:
     mpn = st.text_input("MPN No.")
@@ -228,29 +232,24 @@ with col2:
 with col3:
     quantity = st.number_input("Quantity", min_value=1, step=1, value=1)
     
-    com_col1, com_col2 = st.columns([3, 1])
-    with com_col1:
-        selected_commodity = st.selectbox("Commodity", [""] + st.session_state.commodities)
-    with com_col2:
-        st.write(" ")
-        st.write(" ")
-        if st.popover("⚙️ "):
-            new_com = st.text_input("Add Commodity").strip().upper()
-            if st.button("Add Commodity") and new_com:
-                if new_com not in st.session_state.commodities:
-                    st.session_state.commodities.append(new_com)
-                    save_list_to_excel(2, st.session_state.commodities)
-                    st.success(f"Added {new_com}")
-                    st.rerun()
-            if selected_commodity and st.button("Delete Selected Commodity"):
-                st.session_state.commodities.remove(selected_commodity)
+    selected_commodity = st.selectbox("Commodity", [""] + st.session_state.commodities)
+    if st.popover("⚙️ Manage Commodity List", use_container_width=True):
+        new_com = st.text_input("Add Commodity").strip().upper()
+        if st.button("Add Commodity") and new_com:
+            if new_com not in st.session_state.commodities:
+                st.session_state.commodities.append(new_com)
                 save_list_to_excel(2, st.session_state.commodities)
-                st.success(f"Deleted {selected_commodity}")
+                st.success(f"Added {new_com}")
                 st.rerun()
+        if selected_commodity and st.button("Delete Selected Commodity"):
+            st.session_state.commodities.remove(selected_commodity)
+            save_list_to_excel(2, st.session_state.commodities)
+            st.success(f"Deleted {selected_commodity}")
+            st.rerun()
 
     status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"])
 
-# Bottom Section: Remark & File Uploader side-by-side
+# Bottom Row Inputs
 bottom_col1, bottom_col2 = st.columns([2, 1])
 with bottom_col1:
     remark = st.text_area("Remark", height=68)
@@ -258,20 +257,8 @@ with bottom_col1:
 with bottom_col2:
     uploaded_image = st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"])
 
-# Action Buttons
-btn_col1, btn_col2 = st.columns(2)
-with btn_col1:
-    submit_clicked = st.button("📥 CHECK IN", type="primary", use_container_width=True)
-with btn_col2:
-    if os.path.exists(EXCEL_FILE):
-        with open(EXCEL_FILE, "rb") as file:
-            st.download_button(
-                label="📊 Download Excel Log",
-                data=file,
-                file_name=EXCEL_FILE,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+# Submit Check In Button (Green)
+submit_clicked = st.button("📥 CHECK IN", type="primary", use_container_width=True)
 
 # ==========================================================
 # SAVE DATA PIPELINE
@@ -367,6 +354,53 @@ if submit_clicked:
                 os.remove(temp_img_path)
 
             st.success(f"✅ Material checked in successfully under [{sheet_name}]!")
+            st.rerun()
 
         except Exception as e:
             st.error(f"Error saving to Excel: {e}")
+
+# ==========================================================
+# VIEW AND EDIT EXCEL LOG DIRECTLY
+# ==========================================================
+st.divider()
+st.subheader("📋 Current Month Excel Records (Edit & View)")
+
+if os.path.exists(EXCEL_FILE):
+    current_sheet = datetime.now().strftime("%b %Y")
+    try:
+        df_excel = pd.read_excel(EXCEL_FILE, sheet_name=current_sheet)
+        
+        # Interactive table for editing cell values directly on web page
+        edited_df = st.data_editor(
+            df_excel, 
+            use_container_width=True, 
+            num_rows="dynamic",
+            key="excel_editor"
+        )
+        
+        col_act1, col_act2 = st.columns(2)
+        with col_act1:
+            if st.button("💾 Save Table Edits", type="primary", use_container_width=True):
+                with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+                    edited_df.to_excel(writer, sheet_name=current_sheet, index=False)
+                
+                # Re-apply styling
+                wb = load_workbook(EXCEL_FILE)
+                ws = wb[current_sheet]
+                apply_excel_formatting(ws)
+                wb.save(EXCEL_FILE)
+                wb.close()
+                st.success("✅ Changes updated directly in Excel file!")
+                st.rerun()
+
+        with col_act2:
+            with open(EXCEL_FILE, "rb") as file:
+                st.download_button(
+                    label="📊 Download Backup Copy",
+                    data=file,
+                    file_name=EXCEL_FILE,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+    except Exception:
+        st.info("No records logged for this month yet.")
