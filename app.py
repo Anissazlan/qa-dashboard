@@ -19,10 +19,14 @@ if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
+
+# FIXED: Default program now includes 'name' and 'desc' keys to avoid KeyError
 if "programs" not in st.session_state:
     st.session_state.programs = [
         {
-            "url": "https://kaltech-inspection-dashboard.streamlit.app/"  # Update with your sub-app link or module
+            "name": "New Incoming Check-In",
+            "desc": "Log, verify, and inspect incoming raw materials with photos.",
+            "url": "https://kaltech-inspection-dashboard.streamlit.app/"
         }
     ]
 
@@ -58,7 +62,7 @@ if not st.session_state.logged_in:
             st.rerun()
 
         else:
-            st.error(f"Access Denied! You must use an `@kaltech.com.my` email address (or Admin email).")
+            st.error("Access Denied! You must use an `@kaltech.com.my` email address (or Admin email).")
 
 # ==========================================================
 # 2. DASHBOARD MAIN SCREEN
@@ -82,22 +86,27 @@ else:
     st.write("Select an application below to launch:")
     st.markdown("---")
 
-    # Render Program Cards
+    # Render Program Cards (Safely handling missing keys)
     for idx, prog in enumerate(st.session_state.programs):
+        prog_name = prog.get("name", "Unnamed Program")
+        prog_desc = prog.get("desc", "No description provided.")
+        prog_url = prog.get("url", "#")
+
         with st.container():
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.subheader(f"📌 {prog['name']}")
-                st.write(prog["desc"])
+                st.subheader(f"📌 {prog_name}")
+                st.write(prog_desc)
             with col2:
                 st.write("")  # Spacing
-                st.link_button("▶ Launch App", prog.get("url", "#"), use_container_width=True)
+                st.link_button("▶ Launch App", prog_url, use_container_width=True)
             st.markdown("---")
 
     # ======================================================
-    # 3. ADMIN PANEL (Only visible to your email)
+    # 3. ADMIN PANEL (Only visible to Admin)
     # ======================================================
     if st.session_state.is_admin:
+        # ADD NEW PROGRAM
         with st.sidebar.expander("➕ Admin: Add New Program", expanded=False):
             st.write("Register a new tool link:")
             new_name = st.text_input("Program Name")
@@ -115,3 +124,22 @@ else:
                     st.rerun()
                 else:
                     st.warning("Please fill in both Name and URL.")
+
+        # DELETE / MANAGE EXISTING PROGRAMS
+        with st.sidebar.expander("🗑️ Admin: Manage / Delete Programs", expanded=False):
+            st.write("Remove unwanted or duplicate programs:")
+            if len(st.session_state.programs) > 0:
+                # Build list of options with index for clear differentiation
+                options = [
+                    f"{i+1}. {p.get('name', 'Unnamed')} ({p.get('url', 'No URL')})" 
+                    for i, p in enumerate(st.session_state.programs)
+                ]
+                selected_to_delete = st.selectbox("Select program to delete:", options)
+                
+                if st.button("🗑️ Delete Selected Program", type="primary"):
+                    delete_idx = options.index(selected_to_delete)
+                    removed_item = st.session_state.programs.pop(delete_idx)
+                    st.success(f"Removed '{removed_item.get('name', 'Program')}'!")
+                    st.rerun()
+            else:
+                st.info("No programs available to delete.")
