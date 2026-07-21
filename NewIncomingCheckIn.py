@@ -18,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling (White Background, Bold Labels, Green Buttons)
+# Custom Styling (White Background, Bold Labels, Green Buttons, Centered Image)
 st.markdown("""
     <style>
     /* White Background */
@@ -33,10 +33,12 @@ st.markdown("""
         max-width: 95% !important;
     }
     
-    /* Center images in columns */
-    div[data-testid="stImage"] {
+    /* Force Center Alignment for Logo Header */
+    .logo-container {
         display: flex;
         justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
     }
     
     /* Bold & Clear Field Labels */
@@ -110,6 +112,10 @@ HEADERS = [
     "MPN No.", "Part No.", "DC/Lot No.", "Quantity", 
     "Commodity", "Status", "Picture", "Remark"
 ]
+
+# Initialize Uploader Key in Session State
+if "img_key" not in st.session_state:
+    st.session_state["img_key"] = 0
 
 # ==========================================================
 # CENTERED POPUP MODAL DIALOG
@@ -224,7 +230,7 @@ def handle_checkin():
     quantity = st.session_state.get("in_qty", 1)
     commodity_input = st.session_state.get("in_commodity", "")
     remark = st.session_state.get("in_remark", "")
-    uploaded_image = st.session_state.get("in_picture", None)
+    uploaded_image = st.session_state.get(f"in_picture_{st.session_state['img_key']}", None)
 
     if not supplier_input or not mpn or not part_no or not status:
         st.session_state["validation_error"] = "⚠️ Please fill in required fields (Supplier, MPN, Part No, Status)."
@@ -318,7 +324,7 @@ def handle_checkin():
         if temp_img_path and os.path.exists(temp_img_path):
             os.remove(temp_img_path)
 
-        # Clear fields on success
+        # Clear text & selection fields
         st.session_state["in_mpn"] = ""
         st.session_state["in_part_no"] = ""
         st.session_state["in_lot_no"] = ""
@@ -327,6 +333,9 @@ def handle_checkin():
         st.session_state["in_commodity"] = ""
         st.session_state["in_status"] = ""
         st.session_state["in_remark"] = ""
+        
+        # Increment Key to Force File Uploader Reset
+        st.session_state["img_key"] += 1
 
         # Trigger popup modal
         st.session_state.show_success_modal = True
@@ -345,11 +354,13 @@ if "show_success_modal" in st.session_state and st.session_state.show_success_mo
 # UI LAYOUT
 # ==========================================================
 
-# 1. Perfectly Centered & Compact Logo (120px)
+# 1. Perfectly Centered Logo Header
 if os.path.exists("Kaltech Logo.png"):
-    l_left, l_mid, l_right = st.columns([2, 1, 2])
+    l_left, l_mid, l_right = st.columns([1, 1, 1])
     with l_mid:
-        st.image("Kaltech Logo.png", width=120)
+        st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+        st.image("Kaltech Logo.png", width=130)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
@@ -417,7 +428,8 @@ with bottom_col1:
     st.text_area("Remark", height=68, key="in_remark")
 
 with bottom_col2:
-    st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"], key="in_picture")
+    # Dynamic key ensures the image uploader clears upon submission
+    st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"], key=f"in_picture_{st.session_state['img_key']}")
 
 # Submit Check In Button with Callback Handler
 st.button("📥 CHECK IN", type="primary", use_container_width=True, on_click=handle_checkin)
