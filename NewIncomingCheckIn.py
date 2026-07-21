@@ -18,6 +18,39 @@ st.set_page_config(
     layout="centered"
 )
 
+# Custom Styling (Bold Labels, Dark Text for Light Mode, Custom Title Color)
+st.markdown("""
+    <style>
+    /* Force input labels to be Bold and Dark Blue/Black */
+    div[data-widget="text_input"] label, 
+    div[data-widget="number_input"] label, 
+    div[data-widget="selectbox"] label, 
+    div[data-widget="date_input"] label, 
+    div[data-widget="file_uploader"] label,
+    div[data-widget="textarea"] label {
+        font-weight: bold !important;
+        font-size: 16px !important;
+        color: #1F4E79 !important;
+    }
+    
+    /* Main Heading Styling */
+    .main-title {
+        color: #1F4E79;
+        font-weight: bold;
+        font-size: 32px;
+        margin-bottom: 0px;
+        text-align: center;
+    }
+    .sub-title {
+        color: #666666;
+        font-style: italic;
+        font-size: 14px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 EXCEL_FILE = "New_Incoming_Check_In.xlsx"
 LISTS_SHEET_NAME = "Lists"
 
@@ -108,7 +141,6 @@ def load_lists_from_excel():
 
     return suppliers, commodities
 
-# Save modified suppliers/commodities back to Excel
 def save_list_to_excel(column_idx, items):
     wb = load_workbook(EXCEL_FILE)
     if LISTS_SHEET_NAME not in wb.sheetnames:
@@ -125,7 +157,6 @@ def save_list_to_excel(column_idx, items):
     wb.save(EXCEL_FILE)
     wb.close()
 
-# Initialize Session State
 if "suppliers" not in st.session_state or "commodities" not in st.session_state:
     s_list, c_list = load_lists_from_excel()
     st.session_state.suppliers = s_list
@@ -135,12 +166,15 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
 # UI LAYOUT
 # ==========================================================
 
-# Logo (if exists in repo)
+# Display Logo centered if it exists
 if os.path.exists("Kaltech Logo.png"):
-    st.image("Kaltech Logo.png", width=150)
+    l_col1, l_col2, l_col3 = st.columns([1, 1, 1])
+    with l_col2:
+        st.image("Kaltech Logo.png", width=150)
 
-st.title("NEW INCOMING CHECK IN")
-st.caption("Incoming Material Inspection System")
+# Styled Colored Title & Subtitle
+st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -152,7 +186,7 @@ with col1:
 with col2:
     iqa_date = st.date_input("IQA Receive Date", value=datetime.now())
 
-# Supplier Section with Add option
+# Supplier Section
 sup_col1, sup_col2 = st.columns([3, 1])
 with sup_col1:
     selected_supplier = st.selectbox("Supplier", [""] + st.session_state.suppliers)
@@ -179,7 +213,7 @@ part_no = st.text_input("Part No.")
 lot_no = st.text_input("DC/Lot No.")
 quantity = st.number_input("Quantity", min_value=1, step=1, value=1)
 
-# Commodity Section with Add option
+# Commodity Section
 com_col1, com_col2 = st.columns([3, 1])
 with com_col1:
     selected_commodity = st.selectbox("Commodity", [""] + st.session_state.commodities)
@@ -221,7 +255,6 @@ if st.button("📥 CHECK IN", type="primary", use_container_width=True):
             sheet_name = store_date.strftime("%b %Y")
             temp_img_path = None
 
-            # Handle Image saving temporarily for Openpyxl
             if uploaded_image:
                 temp_img_path = f"temp_{uploaded_image.name}"
                 with open(temp_img_path, "wb") as f:
@@ -264,7 +297,6 @@ if st.button("📥 CHECK IN", type="primary", use_container_width=True):
             if status in colors:
                 ws.cell(row=row, column=9).fill = PatternFill("solid", fgColor=colors[status])
 
-            # Insert Image into Excel
             if temp_img_path and os.path.exists(temp_img_path):
                 try:
                     img_to_insert = OpenpyxlImage(temp_img_path)
@@ -302,7 +334,6 @@ if st.button("📥 CHECK IN", type="primary", use_container_width=True):
             wb.save(EXCEL_FILE)
             wb.close()
 
-            # Clean up temp image
             if temp_img_path and os.path.exists(temp_img_path):
                 os.remove(temp_img_path)
 
@@ -311,9 +342,7 @@ if st.button("📥 CHECK IN", type="primary", use_container_width=True):
         except Exception as e:
             st.error(f"Error saving to Excel: {e}")
 
-# ==========================================================
-# EXCEL DOWNLOAD LINK
-# ==========================================================
+# Download Link
 if os.path.exists(EXCEL_FILE):
     with open(EXCEL_FILE, "rb") as file:
         st.download_button(
