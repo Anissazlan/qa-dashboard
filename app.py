@@ -22,8 +22,6 @@ if "is_admin" not in st.session_state:
 if "programs" not in st.session_state:
     st.session_state.programs = [
         {
-            "name": "New Incoming Check-In",
-            "desc": "Log, verify, and inspect incoming raw materials with photos.",
             "url": "https://kaltech-inspection-dashboard.streamlit.app/"  # Update with your sub-app link or module
         }
     ]
