@@ -65,11 +65,18 @@ st.markdown("""
         border-color: #1e7e34 !important;
     }
 
+    /* Secondary Small Action Buttons */
+    div.stButton > button[kind="secondary"] {
+        font-size: 12px !important;
+        padding: 2px 8px !important;
+        margin-top: 2px !important;
+    }
+
     /* Titles */
     .main-title {
         color: #1F4E79;
         font-weight: 900;
-        font-size: 28px;
+        font-size: 26px;
         margin-bottom: 0px;
         text-align: center;
     }
@@ -77,7 +84,7 @@ st.markdown("""
         color: #666666;
         font-style: italic;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px;
         margin-bottom: 15px;
         text-align: center;
     }
@@ -199,36 +206,41 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
 # UI LAYOUT
 # ==========================================================
 
-# 1. Standard Centered Logo
+# 1. Perfectly Centered & Compact Logo (120px)
 if os.path.exists("Kaltech Logo.png"):
-    logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
-    with logo_col2:
-        st.image("Kaltech Logo.png", width=180)
+    l_left, l_mid, l_right = st.columns([2, 1, 2])
+    with l_mid:
+        st.image("Kaltech Logo.png", width=120)
 
 st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
 
-# 2. Form Layout (3 Columns)
+# 2. Form Layout (3 Compact Columns)
 col1, col2, col3 = st.columns(3)
 
 with col1:
     store_date = st.date_input("Store Receive Date", value=datetime.now())
     iqa_date = st.date_input("IQA Receive Date", value=datetime.now())
     
-    selected_supplier = st.selectbox("Supplier", [""] + st.session_state.suppliers)
-    if st.popover("⚙️ Manage Supplier List", use_container_width=True):
-        new_sup = st.text_input("Add Supplier").strip().upper()
-        if st.button("Add Supplier") and new_sup:
-            if new_sup not in st.session_state.suppliers:
-                st.session_state.suppliers.append(new_sup)
+    # Inline Supplier Selection & Quick Add
+    supplier_input = st.selectbox(
+        "Supplier", 
+        [""] + st.session_state.suppliers, 
+        help="Select existing or type below to add"
+    )
+    
+    # Simple inline buttons below supplier
+    sup_btn_col1, sup_btn_col2 = st.columns(2)
+    with sup_btn_col1:
+        new_supplier_text = st.text_input("New Supplier Name", key="new_sup_txt", placeholder="Type supplier name...", label_visibility="collapsed")
+    with sup_btn_col2:
+        if st.button("➕ Add Supplier", use_container_width=True):
+            cleaned_sup = new_supplier_text.strip().upper()
+            if cleaned_sup and cleaned_sup not in st.session_state.suppliers:
+                st.session_state.suppliers.append(cleaned_sup)
                 save_list_to_excel(1, st.session_state.suppliers)
-                st.success(f"Added {new_sup}")
+                st.success(f"Added {cleaned_sup}!")
                 st.rerun()
-        if selected_supplier and st.button("Delete Selected Supplier"):
-            st.session_state.suppliers.remove(selected_supplier)
-            save_list_to_excel(1, st.session_state.suppliers)
-            st.success(f"Deleted {selected_supplier}")
-            st.rerun()
 
 with col2:
     mpn = st.text_input("MPN No.")
@@ -238,20 +250,24 @@ with col2:
 with col3:
     quantity = st.number_input("Quantity", min_value=1, step=1, value=1)
     
-    selected_commodity = st.selectbox("Commodity", [""] + st.session_state.commodities)
-    if st.popover("⚙️ Manage Commodity List", use_container_width=True):
-        new_com = st.text_input("Add Commodity").strip().upper()
-        if st.button("Add Commodity") and new_com:
-            if new_com not in st.session_state.commodities:
-                st.session_state.commodities.append(new_com)
+    # Inline Commodity Selection & Quick Add
+    commodity_input = st.selectbox(
+        "Commodity", 
+        [""] + st.session_state.commodities,
+        help="Select existing or type below to add"
+    )
+    
+    com_btn_col1, com_btn_col2 = st.columns(2)
+    with com_btn_col1:
+        new_commodity_text = st.text_input("New Commodity Name", key="new_com_txt", placeholder="Type commodity...", label_visibility="collapsed")
+    with com_btn_col2:
+        if st.button("➕ Add Commodity", use_container_width=True):
+            cleaned_com = new_commodity_text.strip().upper()
+            if cleaned_com and cleaned_com not in st.session_state.commodities:
+                st.session_state.commodities.append(cleaned_com)
                 save_list_to_excel(2, st.session_state.commodities)
-                st.success(f"Added {new_com}")
+                st.success(f"Added {cleaned_com}!")
                 st.rerun()
-        if selected_commodity and st.button("Delete Selected Commodity"):
-            st.session_state.commodities.remove(selected_commodity)
-            save_list_to_excel(2, st.session_state.commodities)
-            st.success(f"Deleted {selected_commodity}")
-            st.rerun()
 
     status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"])
 
@@ -270,7 +286,7 @@ submit_clicked = st.button("📥 CHECK IN", type="primary", use_container_width=
 # SAVE DATA PIPELINE
 # ==========================================================
 if submit_clicked:
-    if not selected_supplier or not mpn or not part_no or not status:
+    if not supplier_input or not mpn or not part_no or not status:
         st.warning("⚠️ Please fill in required fields (Supplier, MPN, Part No, Status).")
     else:
         try:
@@ -298,12 +314,12 @@ if submit_clicked:
             data = [
                 store_date.strftime("%d/%m/%Y"),
                 iqa_date.strftime("%d/%m/%Y"),
-                selected_supplier,
+                supplier_input,
                 mpn.upper(),
                 part_no.upper(),
                 lot_no.upper(),
                 quantity,
-                selected_commodity,
+                commodity_input,
                 status,
                 "",
                 remark
