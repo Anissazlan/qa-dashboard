@@ -18,10 +18,22 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom Styling (Bold Labels, Dark Text for Light Mode, Custom Title Color)
+# Custom Styling (Warm Background, Bold Labels, Custom Title)
 st.markdown("""
     <style>
-    /* Force input labels to be Bold and Dark Blue/Black */
+    /* Warm Soft Background for Light Mode */
+    .stApp {
+        background-color: #FAF6EE !important; /* Soft warm ivory / cream color */
+    }
+    
+    /* Input Box Backgrounds to match cleanly */
+    div[data-baseweb="input"] > div, 
+    div[data-baseweb="select"] > div,
+    textarea {
+        background-color: #FFFFFF !important;
+    }
+
+    /* Force input labels to be Bold and Dark Blue */
     div[data-widget="text_input"] label, 
     div[data-widget="number_input"] label, 
     div[data-widget="selectbox"] label, 
@@ -42,7 +54,7 @@ st.markdown("""
         text-align: center;
     }
     .sub-title {
-        color: #666666;
+        color: #555555;
         font-style: italic;
         font-size: 14px;
         margin-bottom: 20px;
