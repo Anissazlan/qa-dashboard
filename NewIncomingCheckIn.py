@@ -212,6 +212,18 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
     st.session_state.suppliers = s_list
     st.session_state.commodities = c_list
 
+# Helper function to reset form state
+def reset_form():
+    st.session_state["in_mpn"] = ""
+    st.session_state["in_part_no"] = ""
+    st.session_state["in_lot_no"] = ""
+    st.session_state["in_qty"] = 1
+    st.session_state["in_supplier"] = ""
+    st.session_state["in_commodity"] = ""
+    st.session_state["in_status"] = ""
+    st.session_state["in_remark"] = ""
+    st.session_state["uploader_key"] = st.session_state.get("uploader_key", 0) + 1
+
 # Check if pop-up needs to trigger
 if "show_success_modal" in st.session_state and st.session_state.show_success_modal:
     sheet_added = st.session_state.get("last_saved_sheet", "")
@@ -235,13 +247,14 @@ st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    store_date = st.date_input("Store Receive Date", value=datetime.now())
-    iqa_date = st.date_input("IQA Receive Date", value=datetime.now())
+    store_date = st.date_input("Store Receive Date", value=datetime.now(), key="in_store_date")
+    iqa_date = st.date_input("IQA Receive Date", value=datetime.now(), key="in_iqa_date")
     
     # Inline Supplier Selection & Quick Add
     supplier_input = st.selectbox(
         "Supplier", 
-        [""] + st.session_state.suppliers
+        [""] + st.session_state.suppliers,
+        key="in_supplier"
     )
     
     sup_btn_col1, sup_btn_col2 = st.columns(2)
@@ -257,17 +270,18 @@ with col1:
                 st.rerun()
 
 with col2:
-    mpn = st.text_input("MPN No.")
-    part_no = st.text_input("Part No.")
-    lot_no = st.text_input("DC/Lot No.")
+    mpn = st.text_input("MPN No.", key="in_mpn")
+    part_no = st.text_input("Part No.", key="in_part_no")
+    lot_no = st.text_input("DC/Lot No.", key="in_lot_no")
 
 with col3:
-    quantity = st.number_input("Quantity", min_value=1, step=1, value=1)
+    quantity = st.number_input("Quantity", min_value=1, step=1, value=1, key="in_qty")
     
     # Inline Commodity Selection & Quick Add
     commodity_input = st.selectbox(
         "Commodity", 
-        [""] + st.session_state.commodities
+        [""] + st.session_state.commodities,
+        key="in_commodity"
     )
     
     com_btn_col1, com_btn_col2 = st.columns(2)
@@ -282,15 +296,16 @@ with col3:
                 st.success(f"Added {cleaned_com}!")
                 st.rerun()
 
-    status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"])
+    status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"], key="in_status")
 
 # Bottom Row Inputs
 bottom_col1, bottom_col2 = st.columns([2, 1])
 with bottom_col1:
-    remark = st.text_area("Remark", height=68)
+    remark = st.text_area("Remark", height=68, key="in_remark")
 
 with bottom_col2:
-    uploaded_image = st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"])
+    uploader_key = st.session_state.get("uploader_key", 0)
+    uploaded_image = st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"], key=f"uploader_{uploader_key}")
 
 # Submit Check In Button (Green)
 submit_clicked = st.button("📥 CHECK IN", type="primary", use_container_width=True)
@@ -387,6 +402,9 @@ if submit_clicked:
 
             if temp_img_path and os.path.exists(temp_img_path):
                 os.remove(temp_img_path)
+
+            # Reset form inputs back to blank
+            reset_form()
 
             # Trigger Center Modal Pop-up
             st.session_state.show_success_modal = True
