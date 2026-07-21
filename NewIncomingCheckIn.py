@@ -65,7 +65,7 @@ st.markdown("""
         border-color: #1e7e34 !important;
     }
 
-    /* Secondary Small Action Buttons */
+    /* Secondary Action Buttons */
     div.stButton > button[kind="secondary"] {
         font-size: 12px !important;
         padding: 2px 8px !important;
@@ -110,6 +110,16 @@ HEADERS = [
     "MPN No.", "Part No.", "DC/Lot No.", "Quantity", 
     "Commodity", "Status", "Picture", "Remark"
 ]
+
+# ==========================================================
+# CENTERED POPUP MODAL DIALOG
+# ==========================================================
+@st.dialog("✅ Check-In Successful!")
+def show_success_popup(sheet_name):
+    st.write(f"Material has been successfully recorded into **[{sheet_name}]** sheet.")
+    st.balloons()
+    if st.button("OK", type="primary", use_container_width=True):
+        st.rerun()
 
 # ==========================================================
 # EXCEL HELPER FUNCTIONS
@@ -202,6 +212,12 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
     st.session_state.suppliers = s_list
     st.session_state.commodities = c_list
 
+# Check if pop-up needs to trigger
+if "show_success_modal" in st.session_state and st.session_state.show_success_modal:
+    sheet_added = st.session_state.get("last_saved_sheet", "")
+    st.session_state.show_success_modal = False
+    show_success_popup(sheet_added)
+
 # ==========================================================
 # UI LAYOUT
 # ==========================================================
@@ -225,11 +241,9 @@ with col1:
     # Inline Supplier Selection & Quick Add
     supplier_input = st.selectbox(
         "Supplier", 
-        [""] + st.session_state.suppliers, 
-        help="Select existing or type below to add"
+        [""] + st.session_state.suppliers
     )
     
-    # Simple inline buttons below supplier
     sup_btn_col1, sup_btn_col2 = st.columns(2)
     with sup_btn_col1:
         new_supplier_text = st.text_input("New Supplier Name", key="new_sup_txt", placeholder="Type supplier name...", label_visibility="collapsed")
@@ -253,8 +267,7 @@ with col3:
     # Inline Commodity Selection & Quick Add
     commodity_input = st.selectbox(
         "Commodity", 
-        [""] + st.session_state.commodities,
-        help="Select existing or type below to add"
+        [""] + st.session_state.commodities
     )
     
     com_btn_col1, com_btn_col2 = st.columns(2)
@@ -375,52 +388,65 @@ if submit_clicked:
             if temp_img_path and os.path.exists(temp_img_path):
                 os.remove(temp_img_path)
 
-            st.success(f"✅ Material checked in successfully under [{sheet_name}]!")
+            # Trigger Center Modal Pop-up
+            st.session_state.show_success_modal = True
+            st.session_state.last_saved_sheet = sheet_name
             st.rerun()
 
         except Exception as e:
             st.error(f"Error saving to Excel: {e}")
 
 # ==========================================================
-# VIEW AND EDIT EXCEL LOG DIRECTLY
+# VIEW AND EDIT EXCEL LOG DIRECTLY (ALL MONTHS SELECTOR)
 # ==========================================================
 st.divider()
-st.subheader("📋 Current Month Excel Records (Edit & View)")
 
 if os.path.exists(EXCEL_FILE):
-    current_sheet = datetime.now().strftime("%b %Y")
     try:
-        df_excel = pd.read_excel(EXCEL_FILE, sheet_name=current_sheet)
+        excel_file_obj = pd.ExcelFile(EXCEL_FILE)
+        all_sheets = [s for s in excel_file_obj.sheet_names if s != LISTS_SHEET_NAME]
         
-        edited_df = st.data_editor(
-            df_excel, 
-            use_container_width=True, 
-            num_rows="dynamic",
-            key="excel_editor"
-        )
+        curr_month = datetime.now().strftime("%b %Y")
         
-        col_act1, col_act2 = st.columns(2)
-        with col_act1:
-            if st.button("💾 Save Table Edits", type="primary", use_container_width=True):
-                with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-                    edited_df.to_excel(writer, sheet_name=current_sheet, index=False)
-                
-                wb = load_workbook(EXCEL_FILE)
-                ws = wb[current_sheet]
-                apply_excel_formatting(ws)
-                wb.save(EXCEL_FILE)
-                wb.close()
-                st.success("✅ Changes updated directly in Excel file!")
-                st.rerun()
+        head_col1, head_col2 = st.columns([2, 1])
+        with head_col1:
+            st.subheader("📋 Excel Records Log")
+        with head_col2:
+            default_index = all_sheets.index(curr_month) if curr_month in all_sheets else 0
+            selected_sheet = st.selectbox("📅 Select Month Sheet:", all_sheets, index=default_index)
 
-        with col_act2:
-            with open(EXCEL_FILE, "rb") as file:
-                st.download_button(
-                    label="📊 Download Backup Copy",
-                    data=file,
-                    file_name=EXCEL_FILE,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-    except Exception:
-        st.info("No records logged for this month yet.")
+        if selected_sheet:
+            df_excel = pd.read_excel(EXCEL_FILE, sheet_name=selected_sheet)
+            
+            edited_df = st.data_editor(
+                df_excel, 
+                use_container_width=True, 
+                num_rows="dynamic",
+                key=f"excel_editor_{selected_sheet}"
+            )
+            
+            col_act1, col_act2 = st.columns(2)
+            with col_act1:
+                if st.button("💾 Save Table Edits", type="primary", use_container_width=True):
+                    with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+                        edited_df.to_excel(writer, sheet_name=selected_sheet, index=False)
+                    
+                    wb = load_workbook(EXCEL_FILE)
+                    ws = wb[selected_sheet]
+                    apply_excel_formatting(ws)
+                    wb.save(EXCEL_FILE)
+                    wb.close()
+                    st.success("✅ Changes updated directly in Excel file!")
+                    st.rerun()
+
+            with col_act2:
+                with open(EXCEL_FILE, "rb") as file:
+                    st.download_button(
+                        label="📊 Download Backup Copy",
+                        data=file,
+                        file_name=EXCEL_FILE,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+    except Exception as err:
+        st.info("No monthly check-in logs recorded yet.")
