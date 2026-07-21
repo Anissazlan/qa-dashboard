@@ -24,7 +24,7 @@ if "programs" not in st.session_state:
         {
             "name": "New Incoming Check-In",
             "desc": "Log, verify, and inspect incoming raw materials with photos.",
-            "url": "https://your-checkin-app-link.streamlit.app"  # Update with your sub-app link or module
+            "url": "https://kaltech-inspection-dashboard.streamlit.app/"  # Update with your sub-app link or module
         }
     ]
 
