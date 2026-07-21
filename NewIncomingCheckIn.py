@@ -18,46 +18,47 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom Styling (Warm Background, Bold Labels, Custom Title)
+# Custom CSS: Clean White BG + Extra Bold/Larger Field Labels
 st.markdown("""
     <style>
-    /* Warm Soft Background for Light Mode */
+    /* Force Pure White Background for seamless logo blending */
     .stApp {
-        background-color: #FAF6EE !important; /* Soft warm ivory / cream color */
-    }
-    
-    /* Input Box Backgrounds to match cleanly */
-    div[data-baseweb="input"] > div, 
-    div[data-baseweb="select"] > div,
-    textarea {
         background-color: #FFFFFF !important;
     }
-
-    /* Force input labels to be Bold and Dark Blue */
+    
+    /* Make ALL input labels Extra Bold, Dark Blue, and Bigger (18px) */
     div[data-widget="text_input"] label, 
     div[data-widget="number_input"] label, 
     div[data-widget="selectbox"] label, 
     div[data-widget="date_input"] label, 
     div[data-widget="file_uploader"] label,
     div[data-widget="textarea"] label {
-        font-weight: bold !important;
-        font-size: 16px !important;
+        font-weight: 800 !important;
+        font-size: 18px !important;
         color: #1F4E79 !important;
+        letter-spacing: 0.5px;
+    }
+
+    /* Increase text size inside entry boxes for easy reading */
+    input, select, textarea {
+        font-size: 16px !important;
     }
     
     /* Main Heading Styling */
     .main-title {
         color: #1F4E79;
-        font-weight: bold;
-        font-size: 32px;
-        margin-bottom: 0px;
+        font-weight: 900;
+        font-size: 34px;
+        margin-bottom: 2px;
         text-align: center;
+        letter-spacing: 1px;
     }
     .sub-title {
-        color: #555555;
+        color: #666666;
         font-style: italic;
-        font-size: 14px;
-        margin-bottom: 20px;
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 25px;
         text-align: center;
     }
     </style>
