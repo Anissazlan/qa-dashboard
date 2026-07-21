@@ -15,18 +15,25 @@ from openpyxl.drawing.spreadsheet_drawing import TwoCellAnchor, AnchorMarker
 st.set_page_config(
     page_title="New Incoming Check In",
     page_icon="📦",
-    layout="centered"
+    layout="wide"  # Use wide mode for optimal screen fit
 )
 
-# Custom CSS: Clean White BG + Extra Bold/Larger Field Labels
+# Custom CSS: Ultra-Compact Layout to avoid scrolling
 st.markdown("""
     <style>
-    /* Force Pure White Background for seamless logo blending */
+    /* Pure White Background */
     .stApp {
         background-color: #FFFFFF !important;
     }
     
-    /* Make ALL input labels Extra Bold, Dark Blue, and Bigger (18px) */
+    /* Reduce page padding */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 95% !important;
+    }
+    
+    /* Bold & Crisp Field Labels */
     div[data-widget="text_input"] label, 
     div[data-widget="number_input"] label, 
     div[data-widget="selectbox"] label, 
@@ -34,31 +41,30 @@ st.markdown("""
     div[data-widget="file_uploader"] label,
     div[data-widget="textarea"] label {
         font-weight: 800 !important;
-        font-size: 18px !important;
+        font-size: 14px !important;
         color: #1F4E79 !important;
-        letter-spacing: 0.5px;
+        margin-bottom: 2px !important;
     }
 
-    /* Increase text size inside entry boxes for easy reading */
-    input, select, textarea {
-        font-size: 16px !important;
+    /* Reduce vertical padding between widgets */
+    div[data-testid="stVerticalBlock"] > div {
+        gap: 0.4rem !important;
     }
     
     /* Main Heading Styling */
     .main-title {
         color: #1F4E79;
         font-weight: 900;
-        font-size: 34px;
-        margin-bottom: 2px;
+        font-size: 26px;
+        margin-bottom: 0px;
         text-align: center;
-        letter-spacing: 1px;
     }
     .sub-title {
         color: #666666;
         font-style: italic;
         font-weight: 600;
-        font-size: 15px;
-        margin-bottom: 25px;
+        font-size: 13px;
+        margin-bottom: 10px;
         text-align: center;
     }
     </style>
@@ -176,93 +182,103 @@ if "suppliers" not in st.session_state or "commodities" not in st.session_state:
     st.session_state.commodities = c_list
 
 # ==========================================================
-# UI LAYOUT
+# UI LAYOUT (3 COMPACT COLUMNS)
 # ==========================================================
 
-# Display Logo centered if it exists
-if os.path.exists("Kaltech Logo.png"):
-    l_col1, l_col2, l_col3 = st.columns([1, 1, 1])
-    with l_col2:
-        st.image("Kaltech Logo.png", width=150)
+# Display Logo + Title Compact Header
+header_col1, header_col2, header_col3 = st.columns([1, 3, 1])
+with header_col2:
+    if os.path.exists("Kaltech Logo.png"):
+        st.image("Kaltech Logo.png", width=110)
+    st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
 
-# Styled Colored Title & Subtitle
-st.markdown('<div class="main-title">NEW INCOMING CHECK IN</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Incoming Material Inspection System</div>', unsafe_allow_html=True)
-
-st.divider()
-
-# Form Inputs
-col1, col2 = st.columns(2)
+# 3-Column Parallel Form Layout
+col1, col2, col3 = st.columns(3)
 
 with col1:
     store_date = st.date_input("Store Receive Date", value=datetime.now())
-with col2:
     iqa_date = st.date_input("IQA Receive Date", value=datetime.now())
-
-# Supplier Section
-sup_col1, sup_col2 = st.columns([3, 1])
-with sup_col1:
-    selected_supplier = st.selectbox("Supplier", [""] + st.session_state.suppliers)
-with sup_col2:
-    st.write(" ")
-    st.write(" ")
-    if st.popover("⚙️ Manage"):
-        new_sup = st.text_input("Add Supplier").strip().upper()
-        if st.button("Add Supplier") and new_sup:
-            if new_sup not in st.session_state.suppliers:
-                st.session_state.suppliers.append(new_sup)
+    
+    sup_col1, sup_col2 = st.columns([3, 1])
+    with sup_col1:
+        selected_supplier = st.selectbox("Supplier", [""] + st.session_state.suppliers)
+    with sup_col2:
+        st.write(" ")
+        st.write(" ")
+        if st.popover("⚙️"):
+            new_sup = st.text_input("Add Supplier").strip().upper()
+            if st.button("Add Supplier") and new_sup:
+                if new_sup not in st.session_state.suppliers:
+                    st.session_state.suppliers.append(new_sup)
+                    save_list_to_excel(1, st.session_state.suppliers)
+                    st.success(f"Added {new_sup}")
+                    st.rerun()
+            if selected_supplier and st.button("Delete Selected Supplier"):
+                st.session_state.suppliers.remove(selected_supplier)
                 save_list_to_excel(1, st.session_state.suppliers)
-                st.success(f"Added {new_sup}")
+                st.success(f"Deleted {selected_supplier}")
                 st.rerun()
-        
-        if selected_supplier and st.button("Delete Selected Supplier"):
-            st.session_state.suppliers.remove(selected_supplier)
-            save_list_to_excel(1, st.session_state.suppliers)
-            st.success(f"Deleted {selected_supplier}")
-            st.rerun()
 
-mpn = st.text_input("MPN No.")
-part_no = st.text_input("Part No.")
-lot_no = st.text_input("DC/Lot No.")
-quantity = st.number_input("Quantity", min_value=1, step=1, value=1)
+with col2:
+    mpn = st.text_input("MPN No.")
+    part_no = st.text_input("Part No.")
+    lot_no = st.text_input("DC/Lot No.")
 
-# Commodity Section
-com_col1, com_col2 = st.columns([3, 1])
-with com_col1:
-    selected_commodity = st.selectbox("Commodity", [""] + st.session_state.commodities)
-with com_col2:
-    st.write(" ")
-    st.write(" ")
-    if st.popover("⚙️ Manage "):
-        new_com = st.text_input("Add Commodity").strip().upper()
-        if st.button("Add Commodity") and new_com:
-            if new_com not in st.session_state.commodities:
-                st.session_state.commodities.append(new_com)
+with col3:
+    quantity = st.number_input("Quantity", min_value=1, step=1, value=1)
+    
+    com_col1, com_col2 = st.columns([3, 1])
+    with com_col1:
+        selected_commodity = st.selectbox("Commodity", [""] + st.session_state.commodities)
+    with com_col2:
+        st.write(" ")
+        st.write(" ")
+        if st.popover("⚙️ "):
+            new_com = st.text_input("Add Commodity").strip().upper()
+            if st.button("Add Commodity") and new_com:
+                if new_com not in st.session_state.commodities:
+                    st.session_state.commodities.append(new_com)
+                    save_list_to_excel(2, st.session_state.commodities)
+                    st.success(f"Added {new_com}")
+                    st.rerun()
+            if selected_commodity and st.button("Delete Selected Commodity"):
+                st.session_state.commodities.remove(selected_commodity)
                 save_list_to_excel(2, st.session_state.commodities)
-                st.success(f"Added {new_com}")
+                st.success(f"Deleted {selected_commodity}")
                 st.rerun()
-                
-        if selected_commodity and st.button("Delete Selected Commodity"):
-            st.session_state.commodities.remove(selected_commodity)
-            save_list_to_excel(2, st.session_state.commodities)
-            st.success(f"Deleted {selected_commodity}")
-            st.rerun()
 
-status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"])
-remark = st.text_area("Remark", height=70)
+    status = st.selectbox("Status", ["", "ACCEPT", "REJECT", "WAIVER", "QA PASS", "ON HOLD"])
 
-uploaded_image = st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"])
-if uploaded_image:
-    st.image(uploaded_image, caption="Preview Image", width=150)
+# Bottom Section: Remark & File Uploader side-by-side
+bottom_col1, bottom_col2 = st.columns([2, 1])
+with bottom_col1:
+    remark = st.text_area("Remark", height=68)
+
+with bottom_col2:
+    uploaded_image = st.file_uploader("📷 Upload Picture", type=["png", "jpg", "jpeg", "bmp"])
+
+# Action Buttons
+btn_col1, btn_col2 = st.columns(2)
+with btn_col1:
+    submit_clicked = st.button("📥 CHECK IN", type="primary", use_container_width=True)
+with btn_col2:
+    if os.path.exists(EXCEL_FILE):
+        with open(EXCEL_FILE, "rb") as file:
+            st.download_button(
+                label="📊 Download Excel Log",
+                data=file,
+                file_name=EXCEL_FILE,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
 
 # ==========================================================
 # SAVE DATA PIPELINE
 # ==========================================================
-st.divider()
-
-if st.button("📥 CHECK IN", type="primary", use_container_width=True):
+if submit_clicked:
     if not selected_supplier or not mpn or not part_no or not status:
-        st.warning("⚠️ Please fill in all required fields (Supplier, MPN, Part No, Status).")
+        st.warning("⚠️ Please fill in required fields (Supplier, MPN, Part No, Status).")
     else:
         try:
             sheet_name = store_date.strftime("%b %Y")
@@ -350,18 +366,7 @@ if st.button("📥 CHECK IN", type="primary", use_container_width=True):
             if temp_img_path and os.path.exists(temp_img_path):
                 os.remove(temp_img_path)
 
-            st.success(f"✅ Material checked in successfully under tab [{sheet_name}]!")
+            st.success(f"✅ Material checked in successfully under [{sheet_name}]!")
 
         except Exception as e:
             st.error(f"Error saving to Excel: {e}")
-
-# Download Link
-if os.path.exists(EXCEL_FILE):
-    with open(EXCEL_FILE, "rb") as file:
-        st.download_button(
-            label="📊 Download Excel Log",
-            data=file,
-            file_name=EXCEL_FILE,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
