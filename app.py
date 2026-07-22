@@ -12,8 +12,8 @@ st.set_page_config(
 # SECURE PRACTICE: Retrieve credentials safely from Streamlit Secrets or environment
 # In local dev or Streamlit Cloud, set these in .streamlit/secrets.toml
 ADMIN_EMAIL = st.secrets.get("ADMIN_EMAIL", "n.anisshahira@yahoo.com")
-ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "KaltechAdmin2026!")  # Change this!
-USER_PASSWORD = st.secrets.get("USER_PASSWORD", "KaltechIQA2026!")       # Change this!
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "Anis1234@")  # Change this!
+USER_PASSWORD = st.secrets.get("USER_PASSWORD", "KaltechIQA")       # Change this!
 
 ALLOWED_DOMAIN = "@kaltech.com.my"
 
