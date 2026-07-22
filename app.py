@@ -30,7 +30,7 @@ if "programs" not in st.session_state:
         {
             "name": "New Incoming Check-In",
             "desc": "Log, verify, and inspect incoming raw materials with photos.",
-            "url": "https://kaltech-inspection-dashboard.streamlit.app/"
+            "url": "https://app-dashboard-newincomingcheckin.streamlit.app/"
         }
     ]
 
