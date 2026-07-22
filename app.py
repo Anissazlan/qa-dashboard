@@ -9,7 +9,12 @@ st.set_page_config(
     layout="centered"
 )
 
-ADMIN_EMAIL = "n.anisshahira@yahoo.com"
+# SECURE PRACTICE: Retrieve credentials safely from Streamlit Secrets or environment
+# In local dev or Streamlit Cloud, set these in .streamlit/secrets.toml
+ADMIN_EMAIL = st.secrets.get("ADMIN_EMAIL", "n.anisshahira@yahoo.com")
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "KaltechAdmin2026!")  # Change this!
+USER_PASSWORD = st.secrets.get("USER_PASSWORD", "KaltechIQA2026!")       # Change this!
+
 ALLOWED_DOMAIN = "@kaltech.com.my"
 
 # Initialize Session State
@@ -20,7 +25,6 @@ if "user_email" not in st.session_state:
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
-# FIXED: Default program now includes 'name' and 'desc' keys to avoid KeyError
 if "programs" not in st.session_state:
     st.session_state.programs = [
         {
@@ -31,7 +35,7 @@ if "programs" not in st.session_state:
     ]
 
 # ==========================================================
-# 1. LOGIN SCREEN
+# 1. LOGIN SCREEN WITH PASSWORD VERIFICATION
 # ==========================================================
 if not st.session_state.logged_in:
     st.title("🏭 Kaltech IQA Portal")
@@ -40,21 +44,25 @@ if not st.session_state.logged_in:
     st.markdown("---")
     st.subheader("Sign In")
 
-    email_input = st.text_input("Enter your Email Address:", placeholder="name@kaltech.com.my")
+    with st.form("login_form"):
+        email_input = st.text_input("Enter your Email Address:", placeholder="name@kaltech.com.my")
+        password_input = st.text_input("Enter Password:", type="password", placeholder="••••••••")
+        submit_button = st.form_submit_button("Log In", type="primary")
 
-    if st.button("Log In", type="primary"):
+    if submit_button:
         clean_email = email_input.strip().lower()
+        clean_pass = password_input.strip()
 
-        # Check Admin Access
-        if clean_email == ADMIN_EMAIL:
+        # Check Admin Access (Requires specific admin password)
+        if clean_email == ADMIN_EMAIL and clean_pass == ADMIN_PASSWORD:
             st.session_state.logged_in = True
             st.session_state.user_email = clean_email
             st.session_state.is_admin = True
             st.success("Logged in as Admin!")
             st.rerun()
 
-        # Check General Kaltech Domain Access
-        elif clean_email.endswith(ALLOWED_DOMAIN):
+        # Check General Kaltech Domain Access (Requires staff password)
+        elif clean_email.endswith(ALLOWED_DOMAIN) and clean_pass == USER_PASSWORD:
             st.session_state.logged_in = True
             st.session_state.user_email = clean_email
             st.session_state.is_admin = False
@@ -62,13 +70,12 @@ if not st.session_state.logged_in:
             st.rerun()
 
         else:
-            st.error("Access Denied! You must use an `@kaltech.com.my` email address (or Admin email).")
+            st.error("Invalid email domain or password. Please check your credentials.")
 
 # ==========================================================
 # 2. DASHBOARD MAIN SCREEN
 # ==========================================================
 else:
-    # Sidebar Header & User Details
     st.sidebar.title("Kaltech IQA")
     st.sidebar.write(f"**Logged in as:**\n`{st.session_state.user_email}`")
     
@@ -86,7 +93,7 @@ else:
     st.write("Select an application below to launch:")
     st.markdown("---")
 
-    # Render Program Cards (Safely handling missing keys)
+    # Render Program Cards
     for idx, prog in enumerate(st.session_state.programs):
         prog_name = prog.get("name", "Unnamed Program")
         prog_desc = prog.get("desc", "No description provided.")
@@ -98,15 +105,14 @@ else:
                 st.subheader(f"📌 {prog_name}")
                 st.write(prog_desc)
             with col2:
-                st.write("")  # Spacing
+                st.write("")
                 st.link_button("▶ Launch App", prog_url, use_container_width=True)
             st.markdown("---")
 
     # ======================================================
-    # 3. ADMIN PANEL (Only visible to Admin)
+    # 3. ADMIN PANEL
     # ======================================================
     if st.session_state.is_admin:
-        # ADD NEW PROGRAM
         with st.sidebar.expander("➕ Admin: Add New Program", expanded=False):
             st.write("Register a new tool link:")
             new_name = st.text_input("Program Name")
@@ -125,11 +131,9 @@ else:
                 else:
                     st.warning("Please fill in both Name and URL.")
 
-        # DELETE / MANAGE EXISTING PROGRAMS
         with st.sidebar.expander("🗑️ Admin: Manage / Delete Programs", expanded=False):
             st.write("Remove unwanted or duplicate programs:")
             if len(st.session_state.programs) > 0:
-                # Build list of options with index for clear differentiation
                 options = [
                     f"{i+1}. {p.get('name', 'Unnamed')} ({p.get('url', 'No URL')})" 
                     for i, p in enumerate(st.session_state.programs)
